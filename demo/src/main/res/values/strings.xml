@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">CachedWeb</string>
+    <string-array name="urls">
+        <item>http://www.baidu.com</item>
+        <item>http://www.sina.com.cn</item>
+        <item>https://www.jianshu.com/p/345f4d8a5cfa</item>
+    </string-array>
+</resources>

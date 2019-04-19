@@ -1,0 +1,51 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+//apply plugin: 'com.jfrog.bintray'
+
+android {
+    compileSdkVersion 28
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility = '1.7'
+        targetCompatibility = '1.7'
+    }
+
+}
+
+//bintray {
+//    user = 'bintray_user'
+//    key = 'bintray_api_key'
+//    pkg {
+//        repo = 'generic'
+//        name = 'gradle-project'
+//        userOrg = 'bintray_user'
+//        licenses = ['Apache-2.0']
+//        vcsUrl = 'https://github.com/bintray/gradle-bintray-plugin.git'
+//    }
+//}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation junit
+    implementation test_runner
+    implementation okhttp
+    implementation gson
+}
+
+apply from: 'upload.gradle'
