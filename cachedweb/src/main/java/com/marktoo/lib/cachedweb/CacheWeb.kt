@@ -102,7 +102,7 @@ interface WebRequestInterceptor {
     fun getCachePath(): File
     fun clearCache()
     fun enableForce(force: Boolean)
-    fun overrideUrl(webView: WebView, url: String, headers: Map<String, String>?)
+    fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?)
 }
 
 class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRequestInterceptor {
@@ -280,17 +280,20 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
     var mOrigin: String = ""
     var mUserAgent: String = ""
 
-    override fun overrideUrl(webView: WebView, url: String, headers: Map<String, String>?) {
+    override fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?) {
         showLog("overrideUrl: $url")
         if (!NetUtil.isValidUrl(url)) return
-        if (headers == null || headers.isEmpty()) {
-            webView.loadUrl(url)
-        } else {
-            webView.loadUrl(url, headers)
+        webView?.apply {
+            if (headers == null || headers.isEmpty()) {
+                loadUrl(url)
+            } else {
+                loadUrl(url, headers)
+            }
+            mReferer = url
+            mOrigin = NetUtil.getOriginUrl(url)
+            mUserAgent = settings.userAgentString
         }
-        mReferer = webView.url
-        mOrigin = NetUtil.getOriginUrl(url)
-        mUserAgent = webView.settings.userAgentString
+
     }
 
     private fun showLog(msg: String) {
@@ -298,7 +301,7 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
     }
 }
 
-class CommonWebConfig(private val context: Context, private val mWebView: WebView) {
+class CommonWebConfig(private val context: Context, private val mWebView: WebView?) {
 
     private val tag: String = "MkWebView"
 
@@ -322,13 +325,13 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
     }
 
     fun applyWebSettings() {
-        mWebView.apply {
+        mWebView?.apply {
             //白屏问题解决方案，白屏产生由于硬件加速导致
 //            setBackgroundColor(ContextCompat.getColor(context, android.R.color.transparent))
             setBackgroundResource(android.R.color.black)
             isDrawingCacheEnabled = true
 
-            this.settings!!.apply {
+            this.settings?.apply {
                 savePassword = false
                 //网页相关设置
                 userAgentString = userAgent
@@ -372,7 +375,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
     fun isCacheables(): Boolean = cacheable && interceptor != null
 
     fun useCached(useCache: Boolean) {
-        interceptor!!.enableForce(useCache)
+        interceptor?.enableForce(useCache)
     }
 
     private val webClient = object : WebViewClient() {
@@ -380,7 +383,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
             showLog("页面开始加载++++++++++++++++")
             startTime = System.currentTimeMillis()
             if (webListener != null) {
-                webListener!!.onPageStarted(view, url, favicon)
+                webListener?.onPageStarted(view, url, favicon)
             }
             super.onPageStarted(view, url, favicon)
         }
@@ -399,8 +402,8 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             showLog("检测到页面加载 ${request?.url}")
 //                    return super.shouldOverrideUrlLoading(view, request)
-            return if (isCacheables()) {
-                interceptor!!.overrideUrl(mWebView, request!!.url.toString(), request!!.requestHeaders)
+            return if (isCacheables() && mWebView != null) {
+                interceptor?.overrideUrl(mWebView, request?.url.toString(), request?.requestHeaders)
                 true
             } else {
                 super.shouldOverrideUrlLoading(view, request)
@@ -410,8 +413,8 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
             showLog("检测到页面加载 $url")
 //                    super.shouldOverrideUrlLoading(view, url)
-            return if (isCacheables()) {
-                interceptor!!.overrideUrl(mWebView, url!!, null)
+            return if (isCacheables() && mWebView != null) {
+                interceptor?.overrideUrl(mWebView, url!!, null)
                 true
             } else {
                 super.shouldOverrideUrlLoading(view, url)
@@ -423,7 +426,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
             showLog("拦截页面请求(21) ${request?.url}")
 //                    return super.shouldInterceptRequest(view, request)
             return if (isCacheables()) {
-                interceptor!!.interceptRequest(request!!)
+                interceptor?.interceptRequest(request!!)
                     ?: super.shouldInterceptRequest(view, request)
             } else {
                 super.shouldInterceptRequest(view, request)
@@ -434,7 +437,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
             showLog("拦截页面请求(20) $url")
 //                    return super.shouldInterceptRequest(view, url)
             return if (isCacheables()) {
-                interceptor!!.interceptRequest(url!!)
+                interceptor?.interceptRequest(url!!)
                     ?: super.shouldInterceptRequest(view, url)
             } else {
                 super.shouldInterceptRequest(view, url)
@@ -456,7 +459,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
             showLog("接收到加载资源错误 ${request?.url} has error is ${error?.errorCode} : ${error?.description}")
             if (webListener != null) {
-                webListener!!.onReceivedError(view, error!!.errorCode, request!!.url.toString())
+                webListener?.onReceivedError(view, error!!.errorCode, request!!.url.toString())
             } else {
                 super.onReceivedError(view, request, error)
             }
@@ -465,7 +468,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
             showLog("接收到加载资源错误 $failingUrl has error is $errorCode : $description")
             if (webListener != null) {
-                webListener!!.onReceivedError(view, errorCode, failingUrl!!)
+                webListener?.onReceivedError(view, errorCode, failingUrl!!)
             } else {
                 super.onReceivedError(view, errorCode, description, failingUrl)
             }
@@ -482,7 +485,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         ) {
             showLog("接收到http错误 ${request?.url} has error is ${request?.method}:${errorResponse?.statusCode}")
             if (webListener != null) {
-                webListener!!.onHttpError(view, request, errorResponse)
+                webListener?.onHttpError(view, request, errorResponse)
             }
             super.onReceivedHttpError(view, request, errorResponse)
         }
@@ -490,7 +493,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
             showLog("接收到ssl错误 ${error?.url} : ${error?.primaryError}")
             if (webListener != null) {
-                webListener!!.onSslError(view, handler, error)
+                webListener?.onSslError(view, handler, error)
             }
             super.onReceivedSslError(view, handler, error)
         }
@@ -529,7 +532,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onScaleChanged(view: WebView?, oldScale: Float, newScale: Float) {
             showLog("页面缩放变化更新 $oldScale to $newScale")
             if (webListener != null) {
-                webListener!!.onSaleChanged(view, oldScale, newScale)
+                webListener?.onSaleChanged(view, oldScale, newScale)
             }
             super.onScaleChanged(view, oldScale, newScale)
         }
@@ -557,7 +560,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun getVideoLoadingProgressView(): View? {
             showLog("video 加载视频时进度条控件")
             if (webListener != null) {
-                return webListener!!.getVideoLoadingProgressView() ?: super.getVideoLoadingProgressView()
+                return webListener?.getVideoLoadingProgressView() ?: super.getVideoLoadingProgressView()
             }
             return super.getVideoLoadingProgressView()
         }
@@ -565,7 +568,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun getDefaultVideoPoster(): Bitmap? {
             showLog("页面未指定video控件的poster属性时，在这里可以拦截提供该属性，提供默认海报图")
             if (webListener != null) {
-                return webListener!!.getVideoPoster() ?: super.getDefaultVideoPoster()
+                return webListener?.getVideoPoster() ?: super.getDefaultVideoPoster()
             }
             return super.getDefaultVideoPoster()
         }
@@ -573,7 +576,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onReceivedIcon(view: WebView?, icon: Bitmap?) {
             showLog("接收到页面角标")
             if (webListener != null) {
-                webListener!!.onReceivedIcon(view, icon)
+                webListener?.onReceivedIcon(view, icon)
             } else {
                 super.onReceivedIcon(view, icon)
             }
@@ -582,7 +585,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onReceivedTitle(view: WebView?, title: String?) {
             showLog("接收到页面标题：$title")
             if (webListener != null) {
-                webListener!!.onReceivedTitle(view, title)
+                webListener?.onReceivedTitle(view, title)
             } else {
                 super.onReceivedTitle(view, title)
             }
@@ -595,7 +598,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
             showLog("显示全屏模式 自定义视图")
             if (webListener != null) {
-                webListener!!.onFullView(view, -1, callback)
+                webListener?.onFullView(view, -1, callback)
             } else {
                 super.onShowCustomView(view, callback)
             }
@@ -607,7 +610,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onShowCustomView(view: View?, requestedOrientation: Int, callback: CustomViewCallback?) {
             showLog("显示全屏模式 自定义视图")
             if (webListener != null) {
-                webListener!!.onFullView(view, requestedOrientation, callback)
+                webListener?.onFullView(view, requestedOrientation, callback)
             } else {
                 super.onShowCustomView(view, requestedOrientation, callback)
             }
@@ -619,7 +622,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onHideCustomView() {
             showLog("退出全屏模式")
             if (webListener != null) {
-                webListener!!.onQuitFullView()
+                webListener?.onQuitFullView()
             } else {
                 super.onHideCustomView()
             }
@@ -637,7 +640,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
             showLog("js 警告窗")
             if (webListener != null) {
-                return webListener!!.onJsAlert(view, url, message, result) ?: super.onJsAlert(
+                return webListener?.onJsAlert(view, url, message, result) ?: super.onJsAlert(
                     view,
                     url,
                     message,
@@ -662,7 +665,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         ): Boolean {
             showLog("js 对话框")
             if (webListener != null) {
-                return webListener!!.onJsPrompt(view, url, message, defaultValue, result) ?: super.onJsPrompt(
+                return webListener?.onJsPrompt(view, url, message, defaultValue, result) ?: super.onJsPrompt(
                     view,
                     url,
                     message,
@@ -682,7 +685,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
             showLog("js 确认框")
             if (webListener != null) {
-                return webListener!!.onJsConfirm(view, url, message, result) ?: super.onJsConfirm(
+                return webListener?.onJsConfirm(view, url, message, result) ?: super.onJsConfirm(
                     view,
                     url,
                     message,
@@ -695,7 +698,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onJsBeforeUnload(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
             showLog("js dialog client是否处理，返回true后，webView 处理，返回false，webView 跳过处理")
             if (webListener != null) {
-                return webListener!!.onJsBeforeUnload(view, url, message, result) ?: super.onJsBeforeUnload(
+                return webListener?.onJsBeforeUnload(view, url, message, result) ?: super.onJsBeforeUnload(
                     view,
                     url,
                     message,
@@ -724,7 +727,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         ): Boolean {
             showLog("js 打开新窗口")
             if (webListener != null) {
-                return webListener!!.onCreateWindow(view, isDialog, isUserGesture, resultMsg) ?: super.onCreateWindow(
+                return webListener?.onCreateWindow(view, isDialog, isUserGesture, resultMsg) ?: super.onCreateWindow(
                     view,
                     isDialog,
                     isUserGesture,
@@ -742,7 +745,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onCloseWindow(window: WebView?) {
             showLog("js 关闭窗口")
             if (webListener != null) {
-                webListener!!.onCloseWindow(window)
+                webListener?.onCloseWindow(window)
             } else {
                 super.onCloseWindow(window)
             }
@@ -751,7 +754,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onProgressChanged(view: WebView?, newProgress: Int) {
             showLog("页面加载进度更新 $newProgress")
             if (webListener != null) {
-                webListener!!.onProgressChanged(view, newProgress)
+                webListener?.onProgressChanged(view, newProgress)
             } else {
                 super.onProgressChanged(view, newProgress)
             }
@@ -813,7 +816,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         ): Boolean {
             showLog("文件选择")
             if (webListener != null) {
-                return webListener!!.onShowFileChooser(webView, filePathCallback, fileChooserParams)
+                return webListener?.onShowFileChooser(webView, filePathCallback, fileChooserParams)
                     ?: super.onShowFileChooser(webView, filePathCallback, fileChooserParams)
             }
             return super.onShowFileChooser(webView, filePathCallback, fileChooserParams)
@@ -822,7 +825,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun onReceivedTouchIconUrl(view: WebView?, url: String?, precomposed: Boolean) {
             showLog("点击图片时响应 $url")
             if (webListener != null) {
-                webListener!!.onReceivedTouchIconUrl(view, url, precomposed)
+                webListener?.onReceivedTouchIconUrl(view, url, precomposed)
             } else {
                 super.onReceivedTouchIconUrl(view, url, precomposed)
             }
@@ -865,11 +868,11 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
     }
 
     fun addOkHttpClient(client: OkHttpClient) {
-        interceptor!!.client = client
+        interceptor?.client = client
     }
 
     fun addClient(client: WebViewClient, chromeClient: WebChromeClient) {
-        mWebView.apply {
+        mWebView?.apply {
             //页面自动加载图片
             settings.loadsImagesAutomatically = false
             webViewClient = client
@@ -883,7 +886,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
 
     @SuppressLint("AddJavascriptInterface", "JavascriptInterface")
     fun addMutualInterface(obj: Any, name: String) {
-        mWebView.addJavascriptInterface(obj, name)
+        mWebView?.addJavascriptInterface(obj, name)
     }
 
     /**
@@ -892,8 +895,14 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
      * eg: javascript:func_name(params)
      * or: file:///android_asset/xxxx.html
      */
-    fun invokeJS(jsContent: String) {
-        mWebView.loadUrl(jsContent)
+    fun invokeJS(jsContent: String, inJavaBridge: Boolean) {
+        if (inJavaBridge) {
+            mWebView?.post {
+                mWebView.loadUrl(jsContent)
+            }
+        } else {
+            mWebView?.loadUrl(jsContent)
+        }
     }
 
     /**
@@ -903,12 +912,18 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
      * @param resultCallback: js callback
      */
     @TargetApi(Build.VERSION_CODES.KITKAT)
-    fun invokeJS(jsContent: String, resultCallback: ValueCallback<String>) {
-        mWebView.evaluateJavascript(jsContent, resultCallback)
+    fun invokeJS(jsContent: String, resultCallback: ValueCallback<String>, inJavaBridge: Boolean) {
+        if (inJavaBridge) {
+            mWebView?.post {
+                mWebView.evaluateJavascript(jsContent, resultCallback)
+            }
+        } else {
+            mWebView?.evaluateJavascript(jsContent, resultCallback)
+        }
     }
 
     fun loadUrl(url: String, headers: Map<String, String>?) {
-        interceptor!!.overrideUrl(mWebView, url, headers)
+        interceptor?.overrideUrl(mWebView, url, headers)
     }
 
     private var pageFinished = false
@@ -922,7 +937,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
             }
             showLog("总共耗时 ${System.currentTimeMillis() - startTime} 毫秒")
 //            showLog(JsonUtil.toJson(counter))
-            mWebView.settings.loadsImagesAutomatically = true
+            mWebView?.settings?.loadsImagesAutomatically = true
         }
     }
 
