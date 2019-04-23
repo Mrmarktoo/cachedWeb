@@ -24,7 +24,10 @@ android {
         sourceCompatibility = '1.7'
         targetCompatibility = '1.7'
     }
-
+    packagingOptions {
+        exclude 'AndroidManifest.xml'
+    }
+    resourcePrefix 'chweb_'
 }
 
 //bintray {
@@ -43,6 +46,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation junit
+    implementation appcompatv7
     implementation test_runner
     implementation okhttp
     implementation gson

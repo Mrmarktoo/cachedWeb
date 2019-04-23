@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Environment
 import android.os.Message
 import android.text.TextUtils
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.*
@@ -298,38 +297,6 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
         LogUtil.showLog(msg)
     }
 }
-
-//object CacheWebHelper : WebRequestInterceptor {
-//    private lateinit var webInterceptor: WebRequestInterceptor
-//    fun init(context: Context) {
-//        webInterceptor = WebViewCacheInterceptor.init(context)
-//    }
-//
-//    override fun interceptRequest(request: WebResourceRequest): WebResourceResponse? {
-//        return webInterceptor.interceptRequest(request)
-//    }
-//
-//    override fun interceptRequest(url: String): WebResourceResponse? {
-//        return webInterceptor.interceptRequest(url)
-//    }
-//
-//    override fun getCachePath(): File {
-//        return webInterceptor.getCachePath()
-//    }
-//
-//    override fun clearCache() {
-//        webInterceptor.clearCache()
-//    }
-//
-//    override fun enableForce(force: Boolean) {
-//        webInterceptor.enableForce(force)
-//    }
-//
-//    override fun overrideUrl(webView: WebView, url: String, headers: Map<String, String>?) {
-//        webInterceptor.overrideUrl(webView, url, headers)
-//    }
-//
-//}
 
 class CommonWebConfig(private val context: Context, private val mWebView: WebView) {
 
@@ -946,14 +913,14 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
 
     private var pageFinished = false
     private var progressOver = false
-    private var startTime: Long? = null
+    private var startTime: Long = System.currentTimeMillis()
 
     private fun loadOver() {
         if (progressOver && pageFinished) {
             if (debug) {
                 Toast.makeText(context, "页面加载完成", Toast.LENGTH_SHORT).show()
             }
-            showLog("总共耗时 ${System.currentTimeMillis() - startTime!!} 毫秒")
+            showLog("总共耗时 ${System.currentTimeMillis() - startTime} 毫秒")
 //            showLog(JsonUtil.toJson(counter))
             mWebView.settings.loadsImagesAutomatically = true
         }
