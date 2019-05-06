@@ -331,6 +331,9 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
     var userAgent: String = ""
     var defaultEncoding: String = "utf-8"
     var cacheable: Boolean = false
+
+    var currentUrl: String? = null
+
     private var interceptor: WebViewCacheInterceptor? = null
     var webListener: WebListener? = null
 
@@ -419,7 +422,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
 
         @TargetApi(Build.VERSION_CODES.N)
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-            showLog("检测到页面加载(24) ${request?.url}")
+            showLog("dOverrideUrlLoading(24) ${request?.url}")
 //                    return super.shouldOverrideUrlLoading(view, request)
             return if (isCacheables() && mWebView != null && interceptor != null) {
                 interceptor!!.overrideUrl(mWebView, request?.url.toString(), request?.requestHeaders)
@@ -429,7 +432,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         }
 
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-            showLog("检测到页面加载(blew 24) $url")
+            showLog("dOverrideUrlLoading(blew 24) $url")
 //                    super.shouldOverrideUrlLoading(view, url)
             return if (isCacheables() && mWebView != null && interceptor != null) {
                 interceptor!!.overrideUrl(mWebView, url!!, null)
@@ -438,9 +441,14 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
             }
         }
 
+        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+            showLog("更新访问历史： url = $url , isReload = $isReload")
+            super.doUpdateVisitedHistory(view, url, isReload)
+        }
+
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-            showLog("拦截页面请求(21) ${request?.url}")
+            showLog("InterceptRequest(21) ${request?.url}")
 //                    return super.shouldInterceptRequest(view, request)
             return if (isCacheables() && request != null && request.url != null) {
                 shouldInterceptRequest(view, request.url.toString())
@@ -451,7 +459,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         }
 
         override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? {
-            showLog("拦截页面请求(20) $url")
+            showLog("InterceptRequest(blew 21) $url")
 //                    return super.shouldInterceptRequest(view, url)
             return if (isCacheables()) {
                 interceptor?.interceptRequest(url!!)
@@ -553,12 +561,6 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
             }
             super.onScaleChanged(view, oldScale, newScale)
         }
-
-        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
-            showLog("更新访问历史： url = $url , isReload = $isReload")
-            super.doUpdateVisitedHistory(view, url, isReload)
-        }
-
     }
 
     private val webChromeClient = object : WebChromeClient() {
@@ -959,6 +961,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
     fun loadUrl(url: String, headers: Map<String, String>?) {
 //        interceptor?.overrideUrl(mWebView, url, headers)
         mWebView?.loadUrl(url, headers)
+        currentUrl = url
     }
 
     /**打印webview回退站历史记录*/
@@ -975,6 +978,20 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
                 showLog("webview history in none")
             }
         }
+    }
+
+    fun isInHistories(url: String): Boolean {
+        val bfList: WebBackForwardList = mWebView!!.copyBackForwardList()
+        val size = bfList.size
+        if (size > 0) {
+            for (i in 0 until size) {
+                val item: WebHistoryItem = bfList.getItemAtIndex(i)
+                if (item.url == url) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     fun releaseWebView() {
