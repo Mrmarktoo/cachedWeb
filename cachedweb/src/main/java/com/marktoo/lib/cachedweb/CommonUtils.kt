@@ -24,12 +24,24 @@ import java.net.URL
  */
 object LogUtil {
     var tag: String = "LogUtil"
+    var debug: Boolean = false
+
+    /**
+     * @param msg 需要log输出的文本信息
+     * */
     fun showLog(msg: String) {
-        Log.e(tag, msg)
+        if (debug) {
+            Log.e(tag, msg)
+        }
     }
 
+    /**
+     * @param obj 需要log输出的对象，用json输出
+     * */
     fun showLog(obj: Any) {
-        showLog(JsonUtil.toJson(obj))
+        if (debug) {
+            showLog(JsonUtil.toJson(obj))
+        }
     }
 }
 
@@ -68,7 +80,7 @@ object NetUtil {
     fun isNetworkConnected(context: Context?): Boolean {
         if (context != null) {
             val mConnectivityManager = context
-                    .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val mNetworkInfo = mConnectivityManager.activeNetworkInfo
             if (mNetworkInfo != null) {
                 return mNetworkInfo.isConnected
@@ -80,9 +92,9 @@ object NetUtil {
     fun isWifiConnected(context: Context?): Boolean {
         if (context != null) {
             val mConnectivityManager = context
-                    .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val mWiFiNetworkInfo = mConnectivityManager
-                    .getNetworkInfo(ConnectivityManager.TYPE_WIFI)
+                .getNetworkInfo(ConnectivityManager.TYPE_WIFI)
             if (mWiFiNetworkInfo != null) {
                 return mWiFiNetworkInfo.isAvailable
             }
@@ -93,9 +105,9 @@ object NetUtil {
     fun isMobileConnected(context: Context?): Boolean {
         if (context != null) {
             val mConnectivityManager = context
-                    .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val mMobileNetworkInfo = mConnectivityManager
-                    .getNetworkInfo(ConnectivityManager.TYPE_MOBILE)
+                .getNetworkInfo(ConnectivityManager.TYPE_MOBILE)
             if (mMobileNetworkInfo != null) {
                 return mMobileNetworkInfo.isAvailable
             }
@@ -106,7 +118,7 @@ object NetUtil {
     fun getConnectedType(context: Context?): Int {
         if (context != null) {
             val mConnectivityManager = context
-                    .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val mNetworkInfo = mConnectivityManager.activeNetworkInfo
             if (mNetworkInfo != null && mNetworkInfo.isAvailable) {
                 return mNetworkInfo.type

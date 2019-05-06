@@ -12,6 +12,7 @@ import android.os.Message
 import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.*
 import android.widget.Toast
 import okhttp3.*
@@ -102,7 +103,7 @@ interface WebRequestInterceptor {
     fun getCachePath(): File
     fun clearCache()
     fun enableForce(force: Boolean)
-    fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?)
+    fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?): Boolean
 }
 
 class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRequestInterceptor {
@@ -120,6 +121,7 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
     var cacheFilter: CacheFilterConfig? = null
     var assetsDir: File? = null
     var client: OkHttpClient? = null
+    var debug: Boolean = false
 
     init {
         cacheFilter = CacheFilterConfig()
@@ -280,28 +282,34 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
     var mOrigin: String = ""
     var mUserAgent: String = ""
 
-    override fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?) {
+    override fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?): Boolean {
         showLog("overrideUrl: $url")
-        if (!NetUtil.isValidUrl(url)) return
+        if (!NetUtil.isValidUrl(url)) return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         webView?.apply {
-            if (headers == null || headers.isEmpty()) {
-                loadUrl(url)
-            } else {
-                loadUrl(url, headers)
-            }
             mReferer = url
             mOrigin = NetUtil.getOriginUrl(url)
             mUserAgent = settings.userAgentString
+            return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                if (headers == null || headers.isEmpty()) {
+                    loadUrl(url)
+                } else {
+                    loadUrl(url, headers)
+                }
+                true
+            } else {
+                false
+            }
         }
-
     }
 
     private fun showLog(msg: String) {
-        LogUtil.showLog(msg)
+        if (debug) {
+            LogUtil.showLog(msg)
+        }
     }
 }
 
-class CommonWebConfig(private val context: Context, private val mWebView: WebView?) {
+class CommonWebConfig(private val context: Context, private var mWebView: WebView?) {
 
     private val tag: String = "MkWebView"
 
@@ -322,6 +330,7 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         } else {
             this.interceptor = WebViewCacheInterceptor.init(context)
         }
+        this.interceptor!!.debug = debug
     }
 
     fun applyWebSettings() {
@@ -398,13 +407,12 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
             loadOver()
         }
 
-        @TargetApi(21)
+        @TargetApi(Build.VERSION_CODES.N)
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-            showLog("检测到页面加载 ${request?.url}")
+            showLog("检测到页面加载(24) ${request?.url}")
 //                    return super.shouldOverrideUrlLoading(view, request)
-            return if (isCacheables() && mWebView != null) {
-                interceptor?.overrideUrl(mWebView, request?.url.toString(), request?.requestHeaders)
-                true
+            return if (isCacheables() && mWebView != null && interceptor != null) {
+                interceptor!!.overrideUrl(mWebView, request?.url.toString(), request?.requestHeaders)
             } else {
                 super.shouldOverrideUrlLoading(view, request)
             }
@@ -413,9 +421,8 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
             showLog("检测到页面加载 $url")
 //                    super.shouldOverrideUrlLoading(view, url)
-            return if (isCacheables() && mWebView != null) {
-                interceptor?.overrideUrl(mWebView, url!!, null)
-                true
+            return if (isCacheables() && mWebView != null && interceptor != null) {
+                interceptor!!.overrideUrl(mWebView, url!!, null)
             } else {
                 super.shouldOverrideUrlLoading(view, url)
             }
@@ -884,38 +891,46 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
         addClient(webClient, webChromeClient)
     }
 
+    /**用于消除web加载时白屏或黑屏问题*/
+    fun noHardWareSupport() {
+        mWebView?.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+    }
+
     @SuppressLint("AddJavascriptInterface", "JavascriptInterface")
+            /**
+             * @param obj 接口对象内方法在web中调用时，需要用@JavascriptInterface修饰
+             * */
     fun addMutualInterface(obj: Any, name: String) {
         mWebView?.addJavascriptInterface(obj, name)
     }
 
     /**
-     * js代码需要在onPageFinished后调用
-     * @param jsContent: javascript code
-     * eg: javascript:func_name(params)
-     * or: file:///android_asset/xxxx.html
+     * js代码在onPageFinished后才起作用
+     * @param jsContent 需要执行的javascript脚本 eg: javascript:func_name(params) or: file:///android_asset/xxxx.html
+     * @param inJavaBridge 是否在web调用方法中执行，如果是，必须设置为true，否则会抛异常,5.0以下没有问题，5.0开始出现这个问题
+     * {RuntimeException: A WebView method was called on thread 'JavaBridge'.All WebView methods must be called on the same thread}
      */
-    fun invokeJS(jsContent: String, inJavaBridge: Boolean) {
+    fun invokeJS(jsContent: String, inJavaBridge: Boolean = false) {
         if (inJavaBridge) {
             mWebView?.post {
-                mWebView.loadUrl(jsContent)
+                mWebView?.loadUrl(jsContent)
             }
         } else {
             mWebView?.loadUrl(jsContent)
         }
     }
 
-    /**
-     * 执行javascript代码，可以有回调
-     * 不足是：仅在4.4/api19 开始支持
-     * @param jsContent: js code
-     * @param resultCallback: js callback
-     */
     @TargetApi(Build.VERSION_CODES.KITKAT)
-    fun invokeJS(jsContent: String, resultCallback: ValueCallback<String>, inJavaBridge: Boolean) {
+            /**
+             * @param jsContent 需要执行的javascript脚本
+             * @param resultCallback 执行脚本结果回调，从web获取数据时可以使用，android 4.4才开始支持此类调用
+             * @param inJavaBridge 是否在web调用方法中执行，如果是，必须设置为true，否则会抛异常,5.0以下没有问题，5.0开始出现这个问题
+             * {RuntimeException: A WebView method was called on thread 'JavaBridge'.All WebView methods must be called on the same thread}
+             */
+    fun invokeJS(jsContent: String, resultCallback: ValueCallback<String>, inJavaBridge: Boolean = false) {
         if (inJavaBridge) {
             mWebView?.post {
-                mWebView.evaluateJavascript(jsContent, resultCallback)
+                mWebView?.evaluateJavascript(jsContent, resultCallback)
             }
         } else {
             mWebView?.evaluateJavascript(jsContent, resultCallback)
@@ -923,7 +938,18 @@ class CommonWebConfig(private val context: Context, private val mWebView: WebVie
     }
 
     fun loadUrl(url: String, headers: Map<String, String>?) {
-        interceptor?.overrideUrl(mWebView, url, headers)
+//        interceptor?.overrideUrl(mWebView, url, headers)
+        mWebView?.loadUrl(url, headers)
+    }
+
+    fun releaseWebView() {
+        val parent = mWebView?.parent
+        if (parent != null && parent is ViewGroup) {
+            parent.removeView(mWebView)
+        }
+        mWebView?.removeAllViews()
+        mWebView?.destroy()
+        mWebView = null
     }
 
     private var pageFinished = false

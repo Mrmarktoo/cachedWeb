@@ -6,6 +6,8 @@ import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.WebBackForwardList
+import android.webkit.WebHistoryItem
 import android.webkit.WebView
 import android.widget.AdapterView
 import android.widget.Spinner
@@ -14,7 +16,7 @@ import android.widget.TextView
 import com.marktoo.lib.cacheweb.CommonWebConfig
 import com.marktoo.lib.cacheweb.LogUtil
 import com.marktoo.lib.cacheweb.WebListener
-import com.marktoo.lib.demo.R.*
+import com.marktoo.lib.demo.R
 
 
 class WebCacheActivity : AppCompatActivity() {
@@ -25,16 +27,16 @@ class WebCacheActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(layout.activity_web_cache)
+        setContentView(R.layout.activity_web_cache)
 
-        mWebView = findViewById(id.webView)
-        tvJsTitle = findViewById(id.tv_web_title)
-        tvListenerTitle = findViewById(id.tv_listener_title)
+        mWebView = findViewById(R.id.webView)
+        tvJsTitle = findViewById(R.id.tv_web_title)
+        tvListenerTitle = findViewById(R.id.tv_listener_title)
         initInterceptor()
 //        initWebView()
-        urls = resources.getStringArray(array.urls)
+        urls = resources.getStringArray(R.array.urls)
 
-        findViewById<Spinner>(id.spinner).onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        findViewById<Spinner>(R.id.spinner).onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 showLog("onNothingSelected")
                 loadUrl(urls[0])
@@ -46,7 +48,7 @@ class WebCacheActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<Switch>(id.toggleButton).setOnCheckedChangeListener { _, isChecked ->
+        findViewById<Switch>(R.id.toggleButton).setOnCheckedChangeListener { _, isChecked ->
             commWeb.useCached(isChecked)
         }
     }
@@ -54,6 +56,7 @@ class WebCacheActivity : AppCompatActivity() {
     private lateinit var commWeb: CommonWebConfig
 
     private fun initInterceptor() {
+        LogUtil.debug = true
         commWeb = CommonWebConfig(this, mWebView!!)
         commWeb.debug = true
         commWeb.cacheable = true
@@ -95,7 +98,7 @@ class WebCacheActivity : AppCompatActivity() {
                 tvListenerTitle.text = "listener title: $title"
             }
         }
-        commWeb.useCached(false)
+        commWeb.useCached(true)
         val mutualInterface = WebMutualInterface()
         mutualInterface.setTitleView(tvJsTitle)
         commWeb.addMutualInterface(mutualInterface, "DDBESOFFICE")
@@ -147,10 +150,24 @@ class WebCacheActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
+        showHistories()
         if (mWebView!!.canGoBack()) {
             mWebView!!.goBack()
         } else {
             super.onBackPressed()
+        }
+    }
+
+    private fun showHistories() {
+        var bfList: WebBackForwardList = mWebView!!.copyBackForwardList()
+        val size = bfList.size
+        if (size > 0) {
+            for (i in 0 until size) {
+                var item: WebHistoryItem = bfList.getItemAtIndex(i)
+                LogUtil.showLog("$i item info: title=${item.title} ,url=${item.url}")
+            }
+        } else {
+            LogUtil.showLog("web history in none")
         }
     }
 }
