@@ -18,3 +18,8 @@
 * use fun invokeJS() to execute javascript code
 * use fun loadUrl() load web page
 * use webListener to add web page listener
+
+*version update record:
+**1.0.0.8: 更新shouldOverrideUrlLoading，适配8.0,8.0后此方法返回true表示不重载，与之前版本正好相反
+           更新log相关，cachedweb和logutil均可以配置是否显示，debug字段
+           增加cachedweb中方法，可以释放webview->releaseWebView(),加载链接不再走interceptor中的override方法，直接用webview加载url
