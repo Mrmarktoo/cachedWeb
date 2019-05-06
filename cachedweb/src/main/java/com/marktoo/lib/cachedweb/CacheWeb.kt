@@ -169,10 +169,17 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
     }
 
     private fun interceptRequest(url: String, headers: MutableMap<String, String>): WebResourceResponse? {
-        if (cacheType == CacheType.NORMAL) return null
+        showLog("判断是否拦截请求")
+        if (cacheType == CacheType.NORMAL) {
+            showLog("未开启缓存模式，不拦截请求")
+            return null
+        }
 
         //检查url
-        if (!canCacheable(url)) return null
+        if (!canCacheable(url)) {
+            showLog("资源不再缓存范围内，不拦截请求")
+            return null
+        }
 
         if (client == null) {
             initHttpClient()
@@ -210,18 +217,21 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
                     webResponse.setStatusCodeAndReasonPhrase(response.code(), msg)
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    showLog("拦截加载资源加载正常，但是设置状态码发生异常，导致请求失败...")
                     return null
                 }
                 webResponse.responseHeaders = mapConvert(response.headers().toMultimap())
             }
             return webResponse
         } catch (e: Exception) {
+            showLog("拦截加载资源异常，未请求到指定资源...")
             e.printStackTrace()
         }
         return null
     }
 
     private fun canCacheable(url: String?): Boolean {
+        showLog("缓存资源判断")
         if (url.isNullOrEmpty()) return false
         if (!url.startsWith("http")) return false
         if (resourceInterceptor != null && !resourceInterceptor!!.interceptor(url)) return false
@@ -419,7 +429,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         }
 
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-            showLog("检测到页面加载 $url")
+            showLog("检测到页面加载(blew 24) $url")
 //                    super.shouldOverrideUrlLoading(view, url)
             return if (isCacheables() && mWebView != null && interceptor != null) {
                 interceptor!!.overrideUrl(mWebView, url!!, null)
@@ -432,8 +442,8 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
             showLog("拦截页面请求(21) ${request?.url}")
 //                    return super.shouldInterceptRequest(view, request)
-            return if (isCacheables()) {
-                interceptor?.interceptRequest(request!!)
+            return if (isCacheables() && request != null && request.url != null) {
+                shouldInterceptRequest(view, request.url.toString())
                     ?: super.shouldInterceptRequest(view, request)
             } else {
                 super.shouldInterceptRequest(view, request)
@@ -481,10 +491,10 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
             }
         }
 
-        @TargetApi(Build.VERSION_CODES.M)
         /**
          * 在加载资源(iframe,image,js,css,ajax...)时收到了 HTTP 错误(状态码>=400)
          */
+        @TargetApi(Build.VERSION_CODES.M)
         override fun onReceivedHttpError(
             view: WebView?,
             request: WebResourceRequest?,
@@ -543,6 +553,12 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
             }
             super.onScaleChanged(view, oldScale, newScale)
         }
+
+        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+            showLog("更新访问历史： url = $url , isReload = $isReload")
+            super.doUpdateVisitedHistory(view, url, isReload)
+        }
+
     }
 
     private val webChromeClient = object : WebChromeClient() {
@@ -789,7 +805,6 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
             super.onGeolocationPermissionsHidePrompt()
         }
 
-
         /**
          * 通知主机应用程序Web内容需要访问本地特殊的资源对象,询问应用程序是拒绝还是允许,主机应用程序必须调用grant(String[])或者deny().
          * 如果不重写此方法，默认拒绝所有权限
@@ -865,6 +880,10 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         }
 
 
+        /**
+         * Obtains a list of all visited history items, used for link coloring
+         * 主要用于提供链接的点击记录，给点击过的链接着色用
+         */
         override fun getVisitedHistory(callback: ValueCallback<Array<String>>?) {
             super.getVisitedHistory(callback)
         }
@@ -881,7 +900,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
     fun addClient(client: WebViewClient, chromeClient: WebChromeClient) {
         mWebView?.apply {
             //页面自动加载图片
-            settings.loadsImagesAutomatically = false
+//            settings.loadsImagesAutomatically = false
             webViewClient = client
             webChromeClient = chromeClient
         }
@@ -896,10 +915,10 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         mWebView?.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
     }
 
+    /**
+     * @param obj 接口对象内方法在web中调用时，需要用@JavascriptInterface修饰
+     * */
     @SuppressLint("AddJavascriptInterface", "JavascriptInterface")
-            /**
-             * @param obj 接口对象内方法在web中调用时，需要用@JavascriptInterface修饰
-             * */
     fun addMutualInterface(obj: Any, name: String) {
         mWebView?.addJavascriptInterface(obj, name)
     }
@@ -920,13 +939,13 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         }
     }
 
+    /**
+     * @param jsContent 需要执行的javascript脚本
+     * @param resultCallback 执行脚本结果回调，从web获取数据时可以使用，android 4.4才开始支持此类调用
+     * @param inJavaBridge 是否在web调用方法中执行，如果是，必须设置为true，否则会抛异常,5.0以下没有问题，5.0开始出现这个问题
+     * {RuntimeException: A WebView method was called on thread 'JavaBridge'.All WebView methods must be called on the same thread}
+     */
     @TargetApi(Build.VERSION_CODES.KITKAT)
-            /**
-             * @param jsContent 需要执行的javascript脚本
-             * @param resultCallback 执行脚本结果回调，从web获取数据时可以使用，android 4.4才开始支持此类调用
-             * @param inJavaBridge 是否在web调用方法中执行，如果是，必须设置为true，否则会抛异常,5.0以下没有问题，5.0开始出现这个问题
-             * {RuntimeException: A WebView method was called on thread 'JavaBridge'.All WebView methods must be called on the same thread}
-             */
     fun invokeJS(jsContent: String, resultCallback: ValueCallback<String>, inJavaBridge: Boolean = false) {
         if (inJavaBridge) {
             mWebView?.post {
@@ -940,6 +959,22 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
     fun loadUrl(url: String, headers: Map<String, String>?) {
 //        interceptor?.overrideUrl(mWebView, url, headers)
         mWebView?.loadUrl(url, headers)
+    }
+
+    /**打印webview回退站历史记录*/
+    fun showHistories() {
+        if (debug && mWebView != null) {
+            val bfList: WebBackForwardList = mWebView!!.copyBackForwardList()
+            val size = bfList.size
+            if (size > 0) {
+                for (i in 0 until size) {
+                    val item: WebHistoryItem = bfList.getItemAtIndex(i)
+                    showLog("webview history index = $i , info: title=${item.title} ,url=${item.url}")
+                }
+            } else {
+                showLog("webview history in none")
+            }
+        }
     }
 
     fun releaseWebView() {
@@ -958,12 +993,13 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
 
     private fun loadOver() {
         if (progressOver && pageFinished) {
+            showLog("加载页面完成")
             if (debug) {
                 Toast.makeText(context, "页面加载完成", Toast.LENGTH_SHORT).show()
             }
             showLog("总共耗时 ${System.currentTimeMillis() - startTime} 毫秒")
 //            showLog(JsonUtil.toJson(counter))
-            mWebView?.settings?.loadsImagesAutomatically = true
+//            mWebView?.settings?.loadsImagesAutomatically = true
         }
     }
 

@@ -25,13 +25,14 @@ import java.net.URL
 object LogUtil {
     var tag: String = "LogUtil"
     var debug: Boolean = false
+    var prefix: String = "++++"
 
     /**
      * @param msg 需要log输出的文本信息
      * */
     fun showLog(msg: String) {
         if (debug) {
-            Log.e(tag, msg)
+            Log.e(tag, prefix.plus(msg))
         }
     }
 

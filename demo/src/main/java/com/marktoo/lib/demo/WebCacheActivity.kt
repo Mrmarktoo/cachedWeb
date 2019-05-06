@@ -122,7 +122,7 @@ class WebCacheActivity : AppCompatActivity() {
     }
 
     fun loadUrl(url: String) {
-        showLog("overrideUrl= $url")
+        showLog("activity loadUrl= $url")
         commWeb.loadUrl(url, null)
     }
 
@@ -142,32 +142,20 @@ class WebCacheActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (mWebView!!.parent is ViewGroup) {
-            (mWebView!!.parent as ViewGroup).removeView(mWebView)
-        }
-        mWebView!!.destroy()
-        mWebView = null
+//        if (mWebView!!.parent is ViewGroup) {
+//            (mWebView!!.parent as ViewGroup).removeView(mWebView)
+//        }
+//        mWebView!!.destroy()
+//        mWebView = null
+        commWeb.releaseWebView()
     }
 
     override fun onBackPressed() {
-        showHistories()
+        commWeb.showHistories()
         if (mWebView!!.canGoBack()) {
             mWebView!!.goBack()
         } else {
             super.onBackPressed()
-        }
-    }
-
-    private fun showHistories() {
-        var bfList: WebBackForwardList = mWebView!!.copyBackForwardList()
-        val size = bfList.size
-        if (size > 0) {
-            for (i in 0 until size) {
-                var item: WebHistoryItem = bfList.getItemAtIndex(i)
-                LogUtil.showLog("$i item info: title=${item.title} ,url=${item.url}")
-            }
-        } else {
-            LogUtil.showLog("web history in none")
         }
     }
 }
