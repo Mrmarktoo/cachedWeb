@@ -24,24 +24,24 @@ ext {
             easy_permission_x        : "3.0.0"
     ]
 
-    dependencies = [
-            appcompatv7 = "com.android.support:appcompat-v7:$versions.appcompat_v7_version",
-            constraint_layout = "com.android.support.constraint:constraint-layout:$versions.constraint_layout_version",
-            junit = "junit:junit:$versions.junit_version",
-            test_runner = "com.android.support.test:runner:$versions.test_runner_version",
-            espresso_core = "com.android.support.test.espresso:espresso-core:$versions.test_espresso_version",
-            okhttp = "com.squareup.okhttp3:okhttp:$versions.okhttp_version",
-            gson = "com.google.code.gson:gson:$versions.gson_version",
-            arouter = "com.alibaba:arouter-api:$versions.arouter_version",
-            arouter_compiler = "com.alibaba:arouter-compiler:$versions.arouter_compiler",
-            recyclerview = "com.android.support:recyclerview-v7:$versions.recyclerview_version",
+    supportLibs = [
+            appcompatv7      : "com.android.support:appcompat-v7:$versions.appcompat_v7_version",
+            constraint_layout: "com.android.support.constraint:constraint-layout:$versions.constraint_layout_version",
+            junit            : "junit:junit:$versions.junit_version",
+            test_runner      : "com.android.support.test:runner:$versions.test_runner_version",
+            espresso_core    : "com.android.support.test.espresso:espresso-core:$versions.test_espresso_version",
+            okhttp           : "com.squareup.okhttp3:okhttp:$versions.okhttp_version",
+            gson             : "com.google.code.gson:gson:$versions.gson_version",
+            arouter          : "com.alibaba:arouter-api:$versions.arouter_version",
+            arouter_compiler : "com.alibaba:arouter-compiler:$versions.arouter_compiler",
+            recyclerview     : "com.android.support:recyclerview-v7:$versions.recyclerview_version",
             //Dagger
-            dagger = "com.google.dagger:dagger:$versions.dagger",
-            dagger_compiler = "com.google.dagger:dagger-compiler:$versions.dagger",
-            multidex = "com.android.support:multidex:$versions.multidex",
-            multidex_x = "androidx.multidex:multidex:$versions.multidex_x",
-            easy_permission = "pub.devrel:easypermissions:$versions.easy_permission",
-            easy_permission_x = "pub.devrel:easypermissions:$versions.easy_permission_x"
+            dagger           : "com.google.dagger:dagger:$versions.dagger",
+            dagger_compiler  : "com.google.dagger:dagger-compiler:$versions.dagger",
+            multidex         : "com.android.support:multidex:$versions.multidex",
+            multidex_x       : "androidx.multidex:multidex:$versions.multidex_x",
+            easy_permission  : "pub.devrel:easypermissions:$versions.easy_permission",
+            easy_permission_x: "pub.devrel:easypermissions:$versions.easy_permission_x"
     ]
 
 }

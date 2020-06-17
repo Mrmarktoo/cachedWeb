@@ -290,7 +290,7 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
 
     var mReferer: String = ""
     var mOrigin: String = ""
-    var mUserAgent: String = ""
+    var mUserAgent: String = "Mozilla/5.0 (Linux; Android 5.1.1; Nexus 6 Build/LYZ28E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Mobile Safari/537.36"
 
     override fun overrideUrl(webView: WebView?, url: String, headers: Map<String, String>?): Boolean {
         showLog("overrideUrl: $url")
@@ -310,6 +310,7 @@ class WebViewCacheInterceptor private constructor(var mContext: Context) : WebRe
                 false
             }
         }
+        return false
     }
 
     private fun showLog(msg: String) {
@@ -926,6 +927,32 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
     }
 
     /**
+     * 调用web js 方法，参数通过集合传参，此处拼接
+     * @param jsMethod js方法名
+     * @param params js方法中使用参数
+     * @param resultCallback js回调方法
+     * @param inJavaBridge 是否在web交互方法中调用
+     */
+    fun invokeJS(
+        jsMethod: String,
+        vararg params: String,
+        resultCallback: ValueCallback<String>? = null,
+        inJavaBridge: Boolean = false
+    ) {
+        val jsContent = "javascript:$jsMethod"
+        if (params.isNotEmpty()) {
+            jsContent.plus(params.sortedArray().joinToString(separator = ",", prefix = "(", postfix = ")"))
+        } else {
+            jsContent.plus("()")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && resultCallback != null) {
+            invokeJS(jsContent, resultCallback, inJavaBridge)
+        } else {
+            invokeJS(jsContent, inJavaBridge)
+        }
+    }
+
+    /**
      * js代码在onPageFinished后才起作用
      * @param jsContent 需要执行的javascript脚本 eg: javascript:func_name(params) or: file:///android_asset/xxxx.html
      * @param inJavaBridge 是否在web调用方法中执行，如果是，必须设置为true，否则会抛异常,5.0以下没有问题，5.0开始出现这个问题
@@ -980,7 +1007,7 @@ class CommonWebConfig(private val context: Context, private var mWebView: WebVie
         }
     }
 
-    fun isInHistories(url: String): Boolean {
+    fun inHistories(url: String): Boolean {
         val bfList: WebBackForwardList = mWebView!!.copyBackForwardList()
         val size = bfList.size
         if (size > 0) {

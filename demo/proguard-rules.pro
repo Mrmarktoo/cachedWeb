@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+-keepattributes *Annotation*
+-keepattributes *JavascriptInterface*
+#-keep public class org.mq.study.webview.DemoJavaScriptInterface{
+#    public <methods>;
+#}
+#-keep public class org.mq.study.webview.webview.DemoJavaScriptInterface$InnerClass{
+#    public <methods>;
+#}

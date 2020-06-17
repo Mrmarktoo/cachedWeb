@@ -11,7 +11,7 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -45,11 +45,9 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation junit
-    implementation appcompatv7
-    implementation test_runner
-    implementation okhttp
-    implementation gson
+    implementation supportLibs.appcompatv7
+    implementation supportLibs.okhttp
+    implementation supportLibs.gson
 }
 
 apply from: 'upload.gradle'

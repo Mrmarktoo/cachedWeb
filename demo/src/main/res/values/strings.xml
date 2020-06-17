@@ -1,10 +1,15 @@
 <resources>
     <string name="app_name">CachedWeb</string>
+    <string name="use_cache">cache</string>
+    <string name="title">页面标题</string>
+    <string name="webjs">webjs标题</string>
+    <string name="web_listen">web监听标题</string>
     <string-array name="urls">
         <item>http://www.baidu.com</item>
         <item>http://www.sina.com.cn</item>
         <item>https://www.jianshu.com/p/345f4d8a5cfa</item>
         <item>http://test.app.ddbes.cn/#/p?cId=4395706771358720&amp;uId=4073025347995555&amp;cname=公民凯恩&amp;token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRUeXBlIjoxLCJjbGllbnQiOjIsImluY3JlbWVudCI6MTE0NiwiZXhwIjoxNTg4NjY2OTQ1LCJ1c2VySWQiOjQwNzMwMjUzNDc5OTU1NTUsInZlcnNpb24iOiIyLjAuMCIsImlhdCI6MTU1NzEzMDk0NX0.B2CNTgAWVLUuA7gO2_OgbMlt47w8Hh0qV3RwnWwGtH8</item>
         <item>http://test.app.ddbes.cn/#/p?cId=4395706771358720&amp;uId=4073025347995555&amp;cname=%E5%85%AC%E6%B0%91%E5%87%AF%E6%81%A9&amp;token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRUeXBlIjoxLCJjbGllbnQiOjIsImluY3JlbWVudCI6MTE0NiwiZXhwIjoxNTg4NjY2OTQ1LCJ1c2VySWQiOjQwNzMwMjUzNDc5OTU1NTUsInZlcnNpb24iOiIyLjAuMCIsImlhdCI6MTU1NzEzMDk0NX0.B2CNTgAWVLUuA7gO2_OgbMlt47w8Hh0qV3RwnWwGtH8</item>
+        <item>http://192.168.1.10:8081/</item>
     </string-array>
 </resources>

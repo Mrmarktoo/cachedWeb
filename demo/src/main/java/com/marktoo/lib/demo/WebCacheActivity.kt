@@ -8,19 +8,19 @@ import android.net.http.SslError
 import android.os.Build
 import android.os.Bundle
 import android.os.Message
-import android.support.v7.app.AppCompatActivity
+import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.View
-import android.view.ViewGroup
 import android.webkit.*
 import android.widget.AdapterView
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import com.marktoo.lib.cacheweb.CommonWebConfig
 import com.marktoo.lib.cacheweb.LogUtil
 import com.marktoo.lib.cacheweb.WebListener
-import com.marktoo.lib.demo.R
+import java.net.URLEncoder
 
 
 class WebCacheActivity : AppCompatActivity() {
@@ -57,6 +57,8 @@ class WebCacheActivity : AppCompatActivity() {
         }
     }
 
+    val holder = MyHistoryHolder()
+
     private fun initWebView() {
         LogUtil.debug = true
         mWebView?.apply {
@@ -83,18 +85,21 @@ class WebCacheActivity : AppCompatActivity() {
                 //自适应屏幕开关
                 useWideViewPort = true
                 loadWithOverviewMode = true
-                layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
+                layoutAlgorithm = WebSettings.LayoutAlgorithm.NARROW_COLUMNS
 
-                //支持混合开发 cookieManager
+                //支持混合开发 5.0 以后的WebView加载的链接为Https开头，但是链接里面的内容，比如图片为Http链接，这时候，图片就会加载不出来
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 //                    val cookieManager = CookieManager.getInstance()
-                    mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+//                    mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 }
 
                 //多窗口开关
                 setSupportMultipleWindows(false)
 
+                setAppCacheEnabled(true)
                 domStorageEnabled = true
+                allowContentAccess = true
                 //允许加载本地文件时设置以下为true
                 allowFileAccess = true
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
@@ -105,11 +110,61 @@ class WebCacheActivity : AppCompatActivity() {
             }
 
             webViewClient = object : WebViewClient() {
+
+                /**
+                 * 通知Application页面已经开始加载资源，页面加载过程中，onPageStarted至多会被执行一次。
+                 */
+                override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                    showLog("onPageStarted( $url )")
+                    super.onPageStarted(view, url, favicon)
+                }
+
+                /**
+                 * 通知Application页面已经加载完毕。
+                 */
                 override fun onPageFinished(view: WebView?, url: String?) {
                     showLog("onPageFinished()")
                     super.onPageFinished(view, url)
                 }
 
+                /**
+                 * 在API 24以后过时，当一个url即将被webview加载时，给Application一个机会来接管处理这个url，
+                 * 方法返回true代表Application自己处理url；
+                 * 返回false代表Webview处理url。
+                 */
+                override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                    showLog("shouldOverrideUrlLoading( $url )")
+//                    val uri = Uri.parse(url)
+//                    val scheme = uri.scheme
+//                    if (TextUtils.isEmpty(scheme)) return true
+//                    if (scheme == "nativeapi") {
+//                        //如定义nativeapi://showImg是用来查看大图，这里添加查看大图逻辑
+//                        return true
+//                    } else if (scheme == "http" || scheme == "https") {
+//                        //处理http协议
+//                        if (Uri.parse(url).host == "www.example.com") {
+//                            // 内部网址，不拦截，用自己的webview加载
+//                            return false
+//                        } else {
+//                            //跳转外部浏览器
+//                            val intent = Intent(Intent.ACTION_VIEW, uri)
+//                            context.startActivity(intent)
+//                            return true
+//                        }
+//                    }
+                    return super.shouldOverrideUrlLoading(view, url)
+                }
+
+                @TargetApi(Build.VERSION_CODES.N)
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                    showLog("shouldOverrideUrlLoading(24 ${request?.url})")
+                    return super.shouldOverrideUrlLoading(view, request)
+                }
+
+                /**
+                 * 在API 21以后过时，通知Application加载资源的请求并返回请求的资源，如果返回值是Null，Webview仍然会按正常加载资源；否则返回的数据将会被使用。
+                 * 注：回调发生在子线程中,不能直接进行UI操作
+                 */
                 override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? {
                     showLog("shouldInterceptRequest( $url )")
                     return super.shouldInterceptRequest(view, url)
@@ -122,6 +177,40 @@ class WebCacheActivity : AppCompatActivity() {
                 ): WebResourceResponse? {
                     showLog("shouldInterceptRequest(24 ${request?.url?.toString()})")
                     return super.shouldInterceptRequest(view, request)
+                }
+
+
+                override fun onLoadResource(view: WebView?, url: String?) {
+                    showLog("onLoadResource( $url )")
+                    super.onLoadResource(view, url)
+                }
+
+                /**
+                 * 更新浏览历史记录
+                 */
+                override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                    showLog("doUpdateVisitedHistory( $url , isReload= $isReload)")
+                    holder.checkHistory(url)
+                    super.doUpdateVisitedHistory(view, url, isReload)
+                }
+
+                /**
+                 * 通知Application有错误发生，这些错误是不可恢复的(即主要的资源不可用)
+                 */
+                override fun onReceivedError(
+                    view: WebView?,
+                    errorCode: Int,
+                    description: String?,
+                    failingUrl: String?
+                ) {
+                    showLog("onReceivedError( $errorCode : $description : $failingUrl )")
+                    super.onReceivedError(view, errorCode, description, failingUrl)
+                }
+
+                @TargetApi(Build.VERSION_CODES.M)
+                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                    showLog("onReceivedError( ${error?.errorCode} : ${error?.description} : ${request?.url} )")
+                    super.onReceivedError(view, request, error)
                 }
 
                 override fun shouldOverrideKeyEvent(view: WebView?, event: KeyEvent?): Boolean {
@@ -137,26 +226,6 @@ class WebCacheActivity : AppCompatActivity() {
                 ) {
                     showLog("onSafeBrowsingHit()")
                     super.onSafeBrowsingHit(view, request, threatType, callback)
-                }
-
-                override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
-                    showLog("doUpdateVisitedHistory( $url , isReload= $isReload)")
-                    super.doUpdateVisitedHistory(view, url, isReload)
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    errorCode: Int,
-                    description: String?,
-                    failingUrl: String?
-                ) {
-                    showLog("onReceivedError()")
-                    super.onReceivedError(view, errorCode, description, failingUrl)
-                }
-
-                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                    showLog("onReceivedError()")
-                    super.onReceivedError(view, request, error)
                 }
 
                 override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
@@ -178,24 +247,9 @@ class WebCacheActivity : AppCompatActivity() {
                     super.onReceivedHttpError(view, request, errorResponse)
                 }
 
-                override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                    showLog("onPageStarted( $url )")
-                    super.onPageStarted(view, url, favicon)
-                }
-
                 override fun onScaleChanged(view: WebView?, oldScale: Float, newScale: Float) {
                     showLog("onScaleChanged( from $oldScale to $newScale )")
                     super.onScaleChanged(view, oldScale, newScale)
-                }
-
-                override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                    showLog("shouldOverrideUrlLoading()")
-                    return super.shouldOverrideUrlLoading(view, url)
-                }
-
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                    showLog("shouldOverrideUrlLoading()")
-                    return super.shouldOverrideUrlLoading(view, request)
                 }
 
                 override fun onPageCommitVisible(view: WebView?, url: String?) {
@@ -238,13 +292,45 @@ class WebCacheActivity : AppCompatActivity() {
                     super.onFormResubmission(view, dontResend, resend)
                 }
 
-                override fun onLoadResource(view: WebView?, url: String?) {
-                    showLog("onLoadResource( $url )")
-                    super.onLoadResource(view, url)
-                }
             }
 
             webChromeClient = object : WebChromeClient() {
+
+                /**
+                 * 通知Application的加载进度，newProgress取值范围[0,100]，可以通过这个方法来编写一个带加载进度条的Webview
+                 */
+                override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                    showLog("onProgressChanged( $newProgress )")
+                    super.onProgressChanged(view, newProgress)
+                }
+
+                /**
+                 * 获取浏览记录
+                 */
+                override fun getVisitedHistory(callback: ValueCallback<Array<String>>?) {
+                    showLog("getVisitedHistory()")
+                    super.getVisitedHistory(callback)
+                }
+
+                /**
+                 * 当加载页面标题有改变时会通知Application，title即为新标题
+                 */
+                override fun onReceivedTitle(view: WebView?, title: String?) {
+                    showLog("onReceivedTitle( $title )")
+                    super.onReceivedTitle(view, "考勤统计")
+                }
+
+                override fun onConsoleMessage(message: String?, lineNumber: Int, sourceID: String?) {
+                    showLog("onConsoleMessage(blew 8-> $lineNumber : $sourceID : $message )")
+                    super.onConsoleMessage(message, lineNumber, sourceID)
+                }
+
+                @TargetApi(Build.VERSION_CODES.FROYO)
+                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                    showLog("onConsoleMessage(8-> ${consoleMessage?.lineNumber()} : ${consoleMessage?.sourceId()} : ${consoleMessage?.message()})")
+                    return super.onConsoleMessage(consoleMessage)
+                }
+
                 override fun onRequestFocus(view: WebView?) {
                     showLog("onRequestFocus()")
                     super.onRequestFocus(view)
@@ -287,16 +373,6 @@ class WebCacheActivity : AppCompatActivity() {
                 override fun onPermissionRequest(request: PermissionRequest?) {
                     showLog("onPermissionRequest()")
                     super.onPermissionRequest(request)
-                }
-
-                override fun onConsoleMessage(message: String?, lineNumber: Int, sourceID: String?) {
-                    showLog("onConsoleMessage( $lineNumber : $sourceID : $message )")
-                    super.onConsoleMessage(message, lineNumber, sourceID)
-                }
-
-                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                    showLog("onConsoleMessage( ${consoleMessage?.lineNumber()} : ${consoleMessage?.sourceId()} : ${consoleMessage?.message()})")
-                    return super.onConsoleMessage(consoleMessage)
                 }
 
                 override fun onPermissionRequestCanceled(request: PermissionRequest?) {
@@ -342,11 +418,6 @@ class WebCacheActivity : AppCompatActivity() {
                     )
                 }
 
-                override fun onReceivedTitle(view: WebView?, title: String?) {
-                    showLog("onReceivedTitle( $title )")
-                    super.onReceivedTitle(view, title)
-                }
-
                 override fun onReachedMaxAppCacheSize(
                     requiredStorage: Long,
                     quota: Long,
@@ -356,19 +427,9 @@ class WebCacheActivity : AppCompatActivity() {
                     super.onReachedMaxAppCacheSize(requiredStorage, quota, quotaUpdater)
                 }
 
-                override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                    showLog("onProgressChanged( $newProgress )")
-                    super.onProgressChanged(view, newProgress)
-                }
-
                 override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
                     showLog("onJsConfirm()")
                     return super.onJsConfirm(view, url, message, result)
-                }
-
-                override fun getVisitedHistory(callback: ValueCallback<Array<String>>?) {
-                    showLog("getVisitedHistory()")
-                    super.getVisitedHistory(callback)
                 }
 
                 override fun getVideoLoadingProgressView(): View? {
@@ -522,10 +583,57 @@ class WebCacheActivity : AppCompatActivity() {
 //        commWeb.releaseWebView()
     }
 
+    class MyHistoryHolder {
+        private val visitHistories: ArrayList<String> = arrayListOf()
+        private val visitItemHistories: ArrayList<MyHistoryItem> = arrayListOf()
+        var currentUrl: String? = null
+
+        fun checkHistory(url: String?) {
+            if (TextUtils.isEmpty(url)) return
+            val realUrl = URLEncoder.encode(url, "utf-8")
+            if (realUrl in visitHistories) {
+                for (item in visitItemHistories) {
+                    if (item.url == realUrl) {
+                        item.count += 1
+                    }
+                }
+            } else {
+                visitHistories.add(realUrl!!)
+                val item = MyHistoryItem(realUrl, 1)
+                visitItemHistories.add(item)
+            }
+        }
+
+        fun canGoBack(): Boolean = visitHistories.size > 1
+
+        fun goBack(webView: WebView) {
+            visitHistories.removeAt(visitHistories.lastIndex)
+            currentUrl = visitHistories.last()
+            val item = visitItemHistories.last()
+            while (item.count > 0) {
+                webView.goBack()
+                item.count--
+            }
+        }
+
+        fun showHistories() {
+            LogUtil.showLog(visitItemHistories)
+        }
+    }
+
+    class MyHistoryItem(val url: String, var count: Int) {
+        override fun toString(): String {
+            return "MyHistoryItem(url='$url', count=$count)"
+        }
+    }
+
     override fun onBackPressed() {
+        holder.showHistories()
         showHistories()
-        if (mWebView!!.canGoBack()) {
-            mWebView!!.goBack()
+        if (holder.canGoBack()) {
+            holder.goBack(mWebView!!)
+//            mWebView!!.loadUrl(holder.currentUrl)
+//            mWebView!!.goBack()
         } else {
             super.onBackPressed()
         }
@@ -544,5 +652,19 @@ class WebCacheActivity : AppCompatActivity() {
                 showLog("webview history in none")
             }
         }
+    }
+
+    fun inHistories(url: String): Boolean {
+        val bfList: WebBackForwardList = mWebView!!.copyBackForwardList()
+        val size = bfList.size
+        if (size > 0) {
+            for (i in 0 until size) {
+                val item: WebHistoryItem = bfList.getItemAtIndex(i)
+                if (item.url == url) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 }
