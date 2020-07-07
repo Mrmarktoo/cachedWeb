@@ -18,7 +18,7 @@ import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.marktoo.lib.cacheweb.CommonWebConfig
-import com.marktoo.lib.cacheweb.LogUtil
+import com.marktoo.lib.cachedweb.LogUtil
 import com.marktoo.lib.cacheweb.WebListener
 import java.net.URLEncoder
 

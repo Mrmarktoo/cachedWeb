@@ -1,4 +1,4 @@
-package com.marktoo.lib.cacheweb
+package com.marktoo.lib.cachedweb
 
 import android.app.Activity
 import android.content.Context
@@ -6,12 +6,11 @@ import android.net.ConnectivityManager
 import android.util.Log
 import android.webkit.URLUtil
 import com.google.gson.Gson
-import com.marktoo.lib.cacheweb.LogUtil.showLog
+import com.marktoo.lib.cachedweb.LogUtil.showLog
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
-import java.lang.StringBuilder
 import java.net.URL
 
 /**
@@ -27,11 +26,29 @@ object LogUtil {
     var debug: Boolean = false
     var prefix: String = "++++"
 
+    private val debugTagSet = hashSetOf<String>()
+
+    fun addDebugTags(vararg tags: String) {
+        if (tags.isNotEmpty()) {
+            debugTagSet.addAll(tags)
+        }
+    }
+
+    fun removeDebugTags(vararg tags: String) {
+        if (tags.isNotEmpty()) {
+            debugTagSet.removeAll(tags)
+        }
+    }
+
+    fun clearDebuTags() {
+        debugTagSet.clear()
+    }
+
     /**
      * @param msg 需要log输出的文本信息
      * */
-    fun showLog(msg: String) {
-        if (debug) {
+    fun showLog(msg: String, tag: String = "base++") {
+        if (debug && tag in debugTagSet) {
             Log.e(tag, prefix.plus(msg))
         }
     }
